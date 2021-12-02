@@ -57,3 +57,45 @@ class BookProductSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         model = BookProduct
         load_instance = True
+
+
+class Carts(db.Model):
+    __tablename__ = 'carts'
+
+    cart_id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer())
+    # timestamp = DateTime(default=datetime.datetime.utcnow)
+    # time_stamp = db.Column(DateTime, default=datetime.datetime.utcnow)
+    status = db.Column(db.String(),default='not ordered')
+
+    def __init__(self, user_id):
+        self.user_id = user_id
+
+    def __repr__(self):
+        # dictionary = {"uid":self.uid}
+        # return dictionary
+        return f"{self.user_id}"
+
+class CartsSchema(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        model = Carts
+        load_instance = True
+
+class CartItems(db.Model):
+    __tablename__ = 'cart_items'
+
+    id = db.Column(db.Integer, primary_key=True)
+    cart_id = db.Column(db.Integer,db.ForeignKey('carts.cart_id'))
+    book_id = db.Column(db.Integer,db.ForeignKey('product.product_id'))
+    quantity = db.Column(db.Integer)
+    # time_stamp = db.Column(DateTime(timezone=True), default=datetime.datetime.utcnow)
+
+    def __init__(self,cart_id,book_id,quantity):
+        self.cart_id = cart_id
+        self.book_id = book_id
+        self.quantity = quantity
+
+    def __repr__(self):
+        return f"{self.cart_id}:{self.book_id}:{self.quantity}"
+
+

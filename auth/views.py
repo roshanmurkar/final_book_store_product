@@ -201,6 +201,80 @@ def details():
         log.warning(e.__str__())
         return jsonify({"message": "Something is wrong"})
 
+@app.route('/add_book_in_cart', methods=['POST'])
+def add_book_in_cart():
+    try:
+        # First decoding the token
+        auth = request.headers.get('authorization')
+        id = jwt.decode(auth, "secret", algorithms=["HS256"])
+        print(id)
+        user = InfoModel.query.filter_by(user_id=id['user_id']).first()
+        # Taking book id and book quantity as a input
+        request_data = request.get_json()
+        # Finding user entered book is present or not in over product table
+        book_details = BookProduct.query.filter_by(product_id=request_data['book_id']).first()
+        if book_details is None:
+            return jsonify({"message": f"No Book is present with book_id {request_data['book_id']}"})
+
+        # checking cart is already created for that user.
+        cart = Carts.query.filter_by(user_id=user.user_id, status='not ordered').first()
+        print(cart, "cart")
+        if cart is None:
+            # If cart is not created it will create new cart for that user
+            new_cart = Carts(user.user_id)
+            db.session.add(new_cart)
+            db.session.commit()
+            print("cart created")
+
+        cart = Carts.query.filter_by(user_id=user.user_id, status='not ordered').first()
+        book_in_cart = CartItems.query.filter_by(cart_id=cart.cart_id, book_id=request_data['book_id']).first()
+        print(book_in_cart)
+        if book_in_cart is not None:
+            book_in_cart.quantity = int(book_in_cart.quantity) + int(request_data['book_quantity'])
+            db.session.commit()
+            return jsonify({"message": "Book Quantity is updated"})
+
+        # cart is already created so new book is add in existing cart.
+        cart_book = CartItems(cart.cart_id, book_details.product_id, request_data['book_quantity'])
+        db.session.add(cart_book)
+        db.session.commit()
+        return jsonify({"message": "Your book is added in your cart"})
+    except Exception as e:
+        return jsonify({"message": str(e)})
+
+@app.route('/particular_cart_details', methods=['GET'])
+def particular_cart_details_data():
+    try:
+        request_data = request.get_json()
+        if not request_data['cart_id'].isnumeric:
+            raise InvalidNumericData
+        cart_data = CartItems.query.filter_by(cart_id=request_data['cart_id']).all()
+        if cart_data is None:
+            return jsonify({"message": "Cart is not found"})
+
+        cart_item_schema = CartItemsSchema(many=True)
+        json_data = cart_item_schema.dump(cart_data)
+        # print(json_data)
+        cart_details = []
+        for data in json_data:
+            book = BookProduct.query.join(CartItems).with_entities\
+                (BookProduct.author, BookProduct.title,BookProduct.baseprice, CartItems.quantity).\
+                filter_by(product_id=data['id']).first()
+            book_product_schema = BookProductSchema()
+            cart_details.append(book_product_schema.dump(book))
+        # print(cart_details)
+        return jsonify({"message": "successful", "data": cart_details})
+
+    except InvalidNumericData:
+        log.warning("Cart_id should be numeric data")
+        return jsonify({"message": "Cart_id should be numeric data"})
+    except Exception as e:
+        log.warning(e.__str__())
+        return jsonify({"message": "Something is wrong"})
+
+
+
+
 
 if __name__ == '__main__':
     app.run(debug=True)

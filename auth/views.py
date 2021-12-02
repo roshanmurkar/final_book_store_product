@@ -72,6 +72,8 @@ def register():
     except Exception as e:
         return jsonify({"message": str(e)})
 
+
+
 @app.route('/verify', methods=['POST', 'GET'])
 def verify():
     """
@@ -134,6 +136,32 @@ def validate():
     except InvalidNumericData:
         return jsonify({"message": "OTP should be in numeric", "Data": user_data})
     except Exception as e:
+        return jsonify({"message": str(e)})
+
+@app.route('/login', methods=['POST'])
+def login():
+    """
+    This function will take username and password as a input from user
+    and it will compare with database all entries
+    if the match is found then it will return login successful or unsuccessful
+    :return: message of login successful or unsuccessful with user data
+    """
+    user_data = request.get_json()
+    try:
+        if len(user_data['user_name']) == 0 or len(user_data['password']) == 0:
+            raise EmptyData
+        user = InfoModel.query.filter_by(user_name=user_data['user_name'],
+                                            password=user_data['password']).first()
+        if user.is_verified == 'YES':
+            if user.password == str(user_data['password']):
+                encoded_jwt = jwt.encode({"user_id": user.user_id}, "secret", algorithm="HS256")
+                return jsonify({"message": f"User Login Successful... Welcome {user.user_name}", "token": encoded_jwt})
+        else:
+            return jsonify({"message": "User Email is Not Verified", "Data": user.email_address})
+    except EmptyData:
+        return jsonify({"message": "Empty data is not allowed", "Data": user_data})
+    except Exception as e:
+        return jsonify({"message": str(e)})
 
 
 if __name__ == '__main__':

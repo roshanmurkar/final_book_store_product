@@ -33,3 +33,27 @@ class InfoModel(db.Model):
     def __repr__(self):
         return f"{self.user_name}:{self.first_name}:{self.last_name}:{self.contact_number}:{self.password}:{self.email_address}"
 
+class BookProduct(db.Model):
+    __tablename__ = 'product'
+
+    product_id = db.Column(db.Integer, primary_key=True)
+    author= db.Column(db.String())
+    title = db.Column(db.String())
+    baseprice = db.Column(db.Integer())
+    description = db.Column(db.String())
+    quantity = db.Column(db.Integer)
+
+    def __init__(self, author,title,baseprice,description,quantity):
+        self.author = author
+        self.title = title
+        self.baseprice = baseprice
+        self.description = description
+        self.quantity =quantity
+
+    def __repr__(self):
+        return f"{self.author}:{self.title}:{self.baseprice}:{self.description}:{self.quantity}"
+
+class BookProductSchema(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        model = BookProduct
+        load_instance = True

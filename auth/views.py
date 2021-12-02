@@ -164,5 +164,43 @@ def login():
         return jsonify({"message": str(e)})
 
 
+@app.route('/add_books', methods=['POST'])
+def add_books():
+    try:
+        request_data = request.get_json()
+        if request_data['author_name'].isnumeric or request_data['title'].isnumeric:
+            raise InvalidStringData
+        book = BookProduct.query.filter_by(author=request_data['author_name'], title=request_data['title']).first()
+        if book is not None:
+            book.quantity = int(book.quantity) + int(request_data['quantity'])
+            db.session.commit()
+            return jsonify({"message": "Book Quantity is updated"})
+
+        new_book = BookProduct(request_data['author_name'], request_data['title'], request_data['baseprice'],
+                               request_data['description'], request_data['quantity'])
+        db.session.add(new_book)
+        db.session.commit()
+        return jsonify({"message": "New book is added."})
+
+    except InvalidStringData:
+        log.warning("Invalid String data")
+        return jsonify({"message": "Invalid Data"})
+    except Exception as e:
+        log.warning(e.__str__())
+        return jsonify({"message": "Something is wrong"})
+    
+
+@app.route('/books', methods=['GET'])
+def details():
+    try:
+        book_product = BookProduct.query.all()
+        book_product_schema = BookProductSchema(many=True)
+        output = book_product_schema.dump(book_product)
+        return jsonify({"message": "All Books Details", "details": output})
+    except Exception as e:
+        log.warning(e.__str__())
+        return jsonify({"message": "Something is wrong"})
+
+
 if __name__ == '__main__':
     app.run(debug=True)

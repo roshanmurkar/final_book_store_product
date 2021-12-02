@@ -273,6 +273,67 @@ def particular_cart_details_data():
         return jsonify({"message": "Something is wrong"})
 
 
+@app.route('/buy_book',methods=['POST'])
+def buy_book():
+    try:
+        print("a")
+        auth = request.headers.get('authorization')
+        id = jwt.decode(auth, "secret", algorithms=["HS256"])
+        user = InfoModel.query.filter_by(user_id=id['user_id']).first()
+        if user is None:
+            raise InvalidToken
+
+        request_data = request.get_json()
+        cart_check = Carts.query.filter_by(cart_id=request_data['cart_id']).first()
+        if cart_check is None:
+            return jsonify({"message": "Cart is not found"})
+
+        order = Orders(cart_check.user_id)
+        db.session.add(order)
+        db.session.commit()
+        cart_check.status = 'Ordered'
+        db.session.commit()
+        order = Orders.query.filter_by(user_id=user.user_id, status='in queue').first()
+        cart_books = CartItems.query.filter_by(cart_id=request_data['cart_id']).all()
+        for book in cart_books:
+            print("inside book in cart_books")
+            order_items = OrderItems(order.order_id, book.book_id,book.quantity)
+            db.session.add(order_items)
+            db.session.commit()
+
+        # order= Orders.query.filter_by(user_id=user.user_id, status='in queue').first()
+        items = OrderItems.query.filter_by(order_id=order.order_id).all()
+        order_items_list = []
+        for order_item in items:
+            data = BookProduct.query.join(OrderItems).with_entities(
+                BookProduct.title,BookProduct.baseprice,OrderItems.quantity).filter_by(product_id=order_item.book_id).first()
+            book_product_schema = BookProductSchema()
+            order_items_list.append(book_product_schema.dump(data))
+
+        order.status = 'confirm'
+        db.session.commit()
+        billing_list = []
+        for entry in order_items_list:
+            billing_list.append(entry['baseprice'] * entry['quantity'])
+
+        total_bill = sum(billing_list)
+        header = order_items_list[0].keys()
+        rows = [x.values() for x in order_items_list]
+        data_in_table_form = tabulate(rows, header, tablefmt='grid')
+        user_email = user.email_address
+        message = Message('Your Order', sender=params['gmail_user'], recipients=[user_email])
+        message.body = f"your books order details are \n" \
+                       f"{data_in_table_form} \n" \
+                       f"and total bill is -> {total_bill}"
+        mail.send(message)
+
+        return jsonify({"message": "Ordered Successful. Please check mail for order details. Thank You :)","data":order_items_list})
+    except InvalidToken:
+        log.warning("Token is invalid")
+        return jsonify({"message":"Token is invalid"})
+    except Exception as e:
+        log.warning(e.__str__())
+        return jsonify({"message":"something is wrong"})
 
 
 

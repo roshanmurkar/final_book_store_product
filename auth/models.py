@@ -98,4 +98,60 @@ class CartItems(db.Model):
     def __repr__(self):
         return f"{self.cart_id}:{self.book_id}:{self.quantity}"
 
+class CartItemsSchema(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        model = CartItems
+        load_instance = True
 
+
+class Orders(db.Model):
+    __tablename__ = 'orders'
+
+    order_id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer,db.ForeignKey('registration.user_id'))
+    # time_stamp = db.Column(DateTime, default=datetime.datetime.utcnow)
+    status = db.Column(db.String(), default='in queue')
+
+    def __init__(self, user_id):
+        self.user_id = user_id
+
+    def __repr__(self):
+        # dictionary = {"uid":self.uid}
+        # return dictionary
+        return f"{self.user_id}"
+
+class OrdersSchema(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        model = Orders
+        load_instance = True
+
+
+class OrderItems(db.Model):
+    __tablename__ = 'order_items'
+
+    id = db.Column(db.Integer, primary_key=True)
+    order_id = db.Column(db.Integer,db.ForeignKey('orders.order_id'))
+    book_id = db.Column(db.Integer,db.ForeignKey('product.product_id'))
+    quantity = db.Column(db.Integer)
+
+    def __init__(self,order_id,book_id,quantity):
+        self.order_id = order_id
+        self.book_id = book_id
+        self.quantity = quantity
+
+
+    def __repr__(self):
+        return f"{self.order_id}:{self.book_id}:{self.quantity}"
+
+class OrderItemsSchema(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        model = OrderItems
+        load_instance = True
+
+
+# create table registration (user_id serial primary key,user_name varchar(30) not null,first_name varchar(20) not null,last_name varchar(20) not null,contact_number varchar(12) not null, password varchar(20) not null,email_address varchar(30) not null,is_verified varchar(10),otp int)
+# CREATE TABLE product(product_id serial primary key, author varchar(50) not null, title varchar(50) not null,baseprice int not null,description varchar(250) not null,quantity int not null );
+# create table cart_items (id serial primary key,cart_id int not null,book_id int not null,quantity int not null,time_stamp timestamp default current_timestamp,foreign key(cart_id) references carts (cart_id),foreign key(book_id) references product(product_id));
+# create table carts (cart_id serial primary key,user_id int not null,time_stamp timestamp default current_timestamp,status varchar(20) default('not ordered'));
+# create table orders (order_id serial primary key,cart_id int not null,time_stamp timestamp default current_timestamp,foreign key(cart_id) references carts (cart_id));
+# create table order_items (id serial primary key,cart_id int not null,book_id int not null,foreign key(cart_id) references carts(cart_id),foreign key(book_id) references product(product_id));

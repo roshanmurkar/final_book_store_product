@@ -72,6 +72,68 @@ def register():
     except Exception as e:
         return jsonify({"message": str(e)})
 
+@app.route('/verify', methods=['POST', 'GET'])
+def verify():
+    """
+    This function will take user email as a input for email verification
+    and after that it will send OTP to that email address for validation purpose
+    :return: It will send message and Email of user
+    """
+    email = request.get_json()
+    try:
+        if len(email['email']) == 0:
+            raise EmptyData
+        user = InfoModel.query.filter_by(email_address=email['email']).first()
+        if user.is_verified == 'YES':
+            return jsonify({"message": "This User mail is already verified", "Data": email})
+
+        otp = pyotp.TOTP('base32secret3232')
+        system_otp = otp.now()
+        print(system_otp)
+        time.sleep(1)
+        log.warning(f"{system_otp} OTP is created for user {user.user_name} with {user.email_address} "
+                    f"email address at {datetime.datetime.now()}")
+        user.otp = system_otp
+        db.session.commit()
+        message = Message('OTP for verification', sender=params['gmail_user'], recipients=[email['email']])
+        message.body = f"Enter this - {str(system_otp)} - OTP for your EMAIL verification ! THANK YOU :)"
+        mail.send(message)
+        return jsonify({"message": "OTP is send on given mail address", "data": email})
+    except EmptyData:
+        return jsonify({"message": "Empty data is not allowed", "Data": email})
+    except Exception as e:
+        return jsonify({"message": str(e)})
+
+
+@app.route('/verify/validate', methods=['POST'])
+def validate():
+    """
+    This function will take user email and verification OTP as a input
+    and then it will match user OTP and system OTP if the match is found
+    then it will return verified email address with user id token
+    :return: whether the email is verified por not if the email is verified
+            then it send user token also.
+    """
+    user_data = request.get_json()
+    try:
+        if len(user_data['otp']) != 6:
+            raise InvalidSize
+        elif not user_data['otp'].isnumeric():
+            raise InvalidNumericData
+        user = InfoModel.query.filter_by(email_address=user_data['email']).first()
+        if user.otp == int(user_data['otp']):
+            # user = InfoModel.query.filter_by(emailaddress=user_data['email']).first()
+            user.is_verified = 'YES'
+            user.otp = 0
+            db.session.commit()
+            encoded_jwt = jwt.encode({"user_id": user.user_id}, "secret", algorithm="HS256")
+            return jsonify({"message": "Email verification successfully", "token": encoded_jwt})
+        return jsonify({"message": "Due to Invalid OTP , Email verification is unsuccessful"})
+    except InvalidSize:
+        return jsonify({"message": "OTP size is Invalid", "Data": user_data})
+    except InvalidNumericData:
+        return jsonify({"message": "OTP should be in numeric", "Data": user_data})
+    except Exception as e:
 
 
 if __name__ == '__main__':

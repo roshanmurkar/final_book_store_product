@@ -201,6 +201,32 @@ def details():
         log.warning(e.__str__())
         return jsonify({"message": "Something is wrong"})
 
-
+    
+@app.route('/upload_books',methods=['POST'])
+def upload_books_using_csv():
+    """
+    in this function we are adding whole csv file of books in our database
+    :return: status of csv file is uploaded or not
+    """
+    try:
+        csv_file = request.files['file']
+        df_csv = pd.read_csv(csv_file,delimiter=',')
+        for index,row in df_csv.iterrows():
+            author = row['author']
+            title = row['title']
+            baseprice = row['baseprice']
+            description = row['description']
+            quantity = row['quantity']
+            query = BookProduct(author=author, title=title, baseprice=baseprice, description=description,
+                                        quantity=quantity)
+            db.session.add(query)
+            db.session.commit()
+        return jsonify({"message":"CSV file uploaded successfully"})
+    except Exception as e:
+        log.exception(e.__str__())
+        return jsonify({"message":"Something is wrong"})
+    
+    
+ 
 if __name__ == '__main__':
     app.run(debug=True)
